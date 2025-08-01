@@ -1,0 +1,712 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model SuperAdmin {
+  id                     String                   @id @default(uuid())
+  firstName              String
+  middleName             String?
+  lastName               String
+  email                  String                   @unique
+  password               String
+  role                   Role                     @default(SUPER_ADMIN)
+  country                String?
+  city                   String?
+  phoneNumber            String                   @unique
+  bankName               String?
+  bankAccountNumber      String?
+  verified               Boolean                  @default(false)
+  createdAt              DateTime                 @default(now())
+  updatedAt              DateTime                 @updatedAt
+  profilePhoto           Json
+  permissions            String[]
+  SubscriptionPackage    SubscriptionPackage[]
+  verificationToken      VerificationToken?
+  banners                Banner[]
+  videos                 Video[]
+  discountCodes          DiscountCode[]
+  sentMessages           ChatMessage[]            @relation("SuperAdminSentMessages")
+  Group                  Group[]
+  PlatformGroup          PlatformGroup[]
+  TelegramSession        TelegramSession?
+  PlatformChannel        PlatformChannel[]
+  PlatformGroupRequest   PlatformGroupRequest[]
+  PlatformChannelRequest PlatformChannelRequest[]
+}
+
+model RegularUser {
+  id                         String                      @id @default(uuid())
+  firstName                  String
+  middleName                 String?
+  lastName                   String
+  email                      String                      @unique
+  password                   String
+  role                       Role                        @default(REGULAR_USER)
+  country                    String?
+  city                       String?
+  phoneNumber                String                      @unique
+  countryCode                String
+  bankName                   String?
+  bankAccountNumber          String?
+  verified                   Boolean                     @default(false)
+  createdAt                  DateTime                    @default(now())
+  updatedAt                  DateTime                    @updatedAt
+  profilePhoto               Json?
+  referrals                  Referral?
+  diamondBalance             Int                         @default(0)
+  subscriptions              UserSubscription[]
+  verificationToken          VerificationToken?
+  discountCodes              DiscountCode[]
+  joinedGroup                Group?                      @relation("UserJoinedGroup", fields: [groupId], references: [id])
+  groupId                    String?
+  GroupMember                GroupMember[]
+  Notification               Notification[]
+  walletSubscriptions        DiamondWallet[]             @relation("UserWalletSubscriptions")
+  diamondWalletSubscriptions DiamondWalletSubscription[]
+  UserNotificationRecord     UserNotificationRecord[]
+  UserShareRecord            UserShareRecord[]
+  sentMessages               ChatMessage[]               @relation("RegularUserSentMessages")
+  receivedMessages           ChatMessage[]               @relation("RegularUserReceivedMessages")
+  PlatformProposal           PlatformProposal[]
+  PlatformGroup              PlatformGroup[]
+  TelegramSession            TelegramSession?
+  PlatformChannel            PlatformChannel[]
+  PlatformGroupRequest       PlatformGroupRequest[]
+  PlatformChannelRequest     PlatformChannelRequest[]
+}
+
+model UserSubscription {
+  id                         String                      @id @default(uuid()) @map("user_id")
+  packageId                  String?
+  startDate                  DateTime                    @default(now())
+  expiresAt                  DateTime
+  endDate                    DateTime
+  isActive                   Boolean                     @default(true)
+  subscriptionType           SubscriptionType            @default(MONTHLY)
+  package                    SubscriptionPackage?        @relation(fields: [packageId], references: [id], onDelete: SetNull)
+  user                       RegularUser                 @relation(fields: [id], references: [id], onDelete: Cascade)
+  PlatformAction             PlatformAction[]            @relation("PlatformUserSubscriptionActions")
+  Message                    Message[]                   @relation("PlatformUserMessages")
+  Audio                      Audio[]                     @relation("PlatformUserAudio")
+  walletSubscriptions        DiamondWallet[]             @relation("UserSubscriptionWalletSubscriptions")
+  diamondWalletSubscriptions DiamondWalletSubscription[]
+  UserNotificationRecord     UserNotificationRecord[]
+  isSubscriptionUser         Boolean                     @default(true)
+  createdAt                  DateTime                    @default(now())
+}
+
+model Supervisor {
+  id                     String                   @id @default(uuid())
+  firstName              String
+  middleName             String?
+  lastName               String
+  email                  String                   @unique
+  password               String
+  role                   Role                     @default(SUPERVISOR)
+  country                String?
+  city                   String?
+  phoneNumber            String                   @unique
+  bankName               String?
+  bankAccountNumber      String?
+  verified               Boolean                  @default(false)
+  createdAt              DateTime                 @default(now())
+  updatedAt              DateTime                 @updatedAt
+  profilePhoto           Json
+  referrals              Referral[]
+  sales                  Sales[]
+  verificationToken      VerificationToken?
+  PlatformGroup          PlatformGroup[]
+  TelegramSession        TelegramSession?
+  PlatformChannel        PlatformChannel[]
+  PlatformChannelRequest PlatformChannelRequest[]
+}
+
+model Sales {
+  id                     String                   @id @default(uuid())
+  firstName              String
+  middleName             String?
+  lastName               String
+  email                  String                   @unique
+  password               String
+  role                   Role                     @default(SALES)
+  country                String?
+  city                   String?
+  phoneNumber            String                   @unique
+  bankName               String?
+  bankAccountNumber      String?
+  verified               Boolean                  @default(false)
+  createdAt              DateTime                 @default(now())
+  updatedAt              DateTime                 @updatedAt
+  supervisorId           String?
+  profilePhoto           Json
+  referrals              Referral[]
+  supervisor             Supervisor?              @relation(fields: [supervisorId], references: [id])
+  verificationToken      VerificationToken?
+  PlatformGroup          PlatformGroup[]
+  TelegramSession        TelegramSession?
+  PlatformChannel        PlatformChannel[]
+  PlatformChannelRequest PlatformChannelRequest[]
+}
+
+model Referral {
+  id           String      @id @default(uuid())
+  salesId      String?
+  supervisorId String?
+  subscriberId String      @unique
+  createdAt    DateTime    @default(now())
+  sales        Sales?      @relation(fields: [salesId], references: [id])
+  subscriber   RegularUser @relation(fields: [subscriberId], references: [id], onDelete: Cascade)
+  supervisor   Supervisor? @relation(fields: [supervisorId], references: [id])
+}
+
+model DiamondWallet {
+  id              String                      @id @default(uuid())
+  diamondCount    Int                         @default(0)
+  priceSAR        Float                       @default(0.0)
+  priceUSD        Float                       @default(0.0)
+  createdAt       DateTime                    @default(now())
+  updatedAt       DateTime                    @updatedAt
+  transactions    Transaction[]
+  subscribers     RegularUser[]               @relation("UserWalletSubscriptions")
+  userSubscribers UserSubscription[]          @relation("UserSubscriptionWalletSubscriptions")
+  subscriptions   DiamondWalletSubscription[]
+  UserShareRecord UserShareRecord[]
+}
+
+model DiamondWalletSubscription {
+  id                 String            @id @default(uuid())
+  diamondCount       Int               @default(0)
+  walletId           String
+  userId             String?
+  userSubscriptionId String?
+  wallet             DiamondWallet     @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  user               RegularUser?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userSubscription   UserSubscription? @relation(fields: [userSubscriptionId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model VerificationToken {
+  id            String       @id @default(uuid())
+  userType      Role
+  token         String       @unique
+  createdAt     DateTime     @default(now())
+  regularUserId String?      @unique
+  salesId       String?      @unique
+  superAdminId  String?      @unique
+  supervisorId  String?      @unique
+  regularUser   RegularUser? @relation(fields: [regularUserId], references: [id], onDelete: Cascade)
+  sales         Sales?       @relation(fields: [salesId], references: [id], onDelete: Cascade)
+  superAdmin    SuperAdmin?  @relation(fields: [superAdminId], references: [id], onDelete: Cascade)
+  supervisor    Supervisor?  @relation(fields: [supervisorId], references: [id], onDelete: Cascade)
+}
+
+model SubscriptionPackage {
+  id                String             @id @default(uuid())
+  name              String
+  description       String?
+  priceSAR          Float
+  priceUSD          Float
+  durationInDays    Int                @default(28)
+  freeHours         Int?
+  features          String[]
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  superAdminId      String
+  superAdmin        SuperAdmin         @relation(fields: [superAdminId], references: [id], onDelete: Cascade)
+  userSubscriptions UserSubscription[]
+}
+
+model Transaction {
+  id          String        @id @default(uuid())
+  walletId    String
+  amount      Int
+  description String?
+  createdAt   DateTime      @default(now())
+  wallet      DiamondWallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+}
+
+model Banner {
+  id           String     @id @default(uuid())
+  imageUrl     String     @default("https://picsum.photos/id/1015/1600/900")
+  publicId     String
+  title        String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  superAdminId String
+  superAdmin   SuperAdmin @relation(fields: [superAdminId], references: [id], onDelete: Cascade)
+}
+
+model Video {
+  id           String     @id @default(uuid())
+  videoUrl     String     @unique
+  publicId     String     @unique
+  platformId   String
+  language     Language   @default(AR)
+  title        String?
+  description  String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  superAdminId String
+  superAdmin   SuperAdmin @relation(fields: [superAdminId], references: [id], onDelete: Cascade)
+  platform     Platform   @relation(fields: [platformId], references: [id], onDelete: Cascade)
+}
+
+model DiscountCode {
+  id           String       @id @default(uuid())
+  code         String
+  percentage   Int
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  superAdminId String?
+  superAdmin   SuperAdmin?  @relation(fields: [superAdminId], references: [id], onDelete: Cascade)
+  userId       String?
+  user         RegularUser? @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Platform {
+  id                     String                   @id @default(uuid())
+  name                   String                   @unique
+  status                 Boolean                  @default(true)
+  platformUrl            String
+  logoUrl                String
+  publicId               String
+  logoPublicId           String
+  createdAt              DateTime                 @default(now())
+  updatedAt              DateTime                 @updatedAt
+  video                  Video[]
+  PlatformAction         PlatformAction[]
+  Message                Message[]
+  Audio                  Audio[]
+  groups                 Group[]
+  PlatformProposal       PlatformProposal[]
+  PlatformGroup          PlatformGroup[]
+  PlatformChannel        PlatformChannel[]
+  PlatformGroupRequest   PlatformGroupRequest[]
+  PlatformChannelRequest PlatformChannelRequest[]
+}
+
+model PlatformProposal {
+  id         String      @id @default(uuid())
+  userId     String
+  platformId String
+  proposal   String
+  user       RegularUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+  platform   Platform    @relation(fields: [platformId], references: [id], onDelete: Cascade)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+}
+
+model PlatformAction {
+  id                 String           @id @default(uuid())
+  userSubscriptionId String
+  platformId         String
+  actionType         ActionType
+  actionData         Json
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  userSubscription   UserSubscription @relation("PlatformUserSubscriptionActions", fields: [userSubscriptionId], references: [id])
+  platform           Platform         @relation(fields: [platformId], references: [id], onDelete: Cascade)
+}
+
+model Country {
+  id      String  @id @default(uuid())
+  nameAr  String
+  nameEn  String
+  code    String  @unique
+  flagUrl String?
+
+  PlatformGroup          PlatformGroup[]
+  PlatformChannel        PlatformChannel[]
+  PlatformGroupRequest   PlatformGroupRequest[]
+  PlatformChannelRequest PlatformChannelRequest[]
+}
+
+model PlatformGroup {
+  id           String   @id @default(uuid())
+  name         String
+  link         String   @unique
+  whatsappJid  String?  @unique
+  imageUrl     String?
+  telegramId   String?
+  accessHash   String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  countryId    String
+  platformId   String
+  userId       String?
+  superAdminId String?
+  supervisorId String?
+  salesId      String?
+
+  country  Country      @relation(fields: [countryId], references: [id], onDelete: Cascade)
+  user     RegularUser? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  platform Platform     @relation(fields: [platformId], references: [id], onDelete: Cascade)
+
+  superAdmin SuperAdmin? @relation(fields: [superAdminId], references: [id], onDelete: SetNull)
+  supervisor Supervisor? @relation(fields: [supervisorId], references: [id], onDelete: SetNull)
+  sales      Sales?      @relation(fields: [salesId], references: [id], onDelete: SetNull)
+}
+
+model PlatformChannel {
+  id            String  @id @default(uuid())
+  name          String
+  description   String?
+  link          String  @unique
+  telegramId    String
+  accessHash    String
+  imageUrl      String?
+  countryId     String
+  platformId    String
+  regularUserId String?
+  supervisorId  String?
+  salesId       String?
+  superAdminId  String?
+
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  country    Country      @relation(fields: [countryId], references: [id], onDelete: Cascade)
+  platform   Platform     @relation(fields: [platformId], references: [id], onDelete: Cascade)
+  user       RegularUser? @relation(fields: [regularUserId], references: [id], onDelete: Cascade)
+  supervisor Supervisor?  @relation(fields: [supervisorId], references: [id], onDelete: Cascade)
+  sales      Sales?       @relation(fields: [salesId], references: [id], onDelete: Cascade)
+  superAdmin SuperAdmin?  @relation(fields: [superAdminId], references: [id], onDelete: Cascade)
+}
+
+model PlatformGroupRequest {
+  id        String        @id @default(uuid())
+  name      String
+  link      String        @unique
+  status    RequestStatus @default(PENDING)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  countryId    String
+  platformId   String
+  userId       String?
+  superAdminId String?
+
+  country    Country      @relation(fields: [countryId], references: [id], onDelete: Cascade)
+  platform   Platform     @relation(fields: [platformId], references: [id], onDelete: Cascade)
+  user       RegularUser? @relation(fields: [userId], references: [id], onDelete: Cascade)
+  superAdmin SuperAdmin?  @relation(fields: [superAdminId], references: [id], onDelete: Cascade)
+}
+
+model PlatformChannelRequest {
+  id            String  @id @default(uuid())
+  name          String
+  description   String?
+  link          String
+  telegramId    String?
+  accessHash    String?
+  imageUrl      String?
+  countryId     String
+  platformId    String
+  regularUserId String?
+  supervisorId  String?
+  salesId       String?
+  superAdminId  String?
+
+  status RequestStatus @default(PENDING)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  country    Country      @relation(fields: [countryId], references: [id], onDelete: Cascade)
+  platform   Platform     @relation(fields: [platformId], references: [id], onDelete: Cascade)
+  user       RegularUser? @relation(fields: [regularUserId], references: [id], onDelete: Cascade)
+  supervisor Supervisor?  @relation(fields: [supervisorId], references: [id], onDelete: Cascade)
+  sales      Sales?       @relation(fields: [salesId], references: [id], onDelete: Cascade)
+  superAdmin SuperAdmin?  @relation(fields: [superAdminId], references: [id], onDelete: Cascade)
+}
+
+model Message {
+  id                 String        @id @default(uuid())
+  userSubscriptionId String
+  platformId         String
+  messageText        String
+  messageType        MessageType   @default(TEXT)
+  imageUrl           String?
+  videoUrl           String?
+  status             MessageStatus @default(AVAILABLE)
+  isEdited           Boolean       @default(false)
+  originalText       String?
+  isDeleted          Boolean       @default(false)
+  whatsAppMessageId  String?
+  editedAt           DateTime?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  userSubscription UserSubscription @relation("PlatformUserMessages", fields: [userSubscriptionId], references: [id], onDelete: Cascade)
+  platform         Platform         @relation(fields: [platformId], references: [id], onDelete: Cascade)
+}
+
+model Audio {
+  id                 String      @id @default(uuid())
+  userSubscriptionId String
+  platformId         String
+  audioUrl           String
+  status             AudioStatus @default(AVAILABLE)
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+
+  userSubscription UserSubscription @relation("PlatformUserAudio", fields: [userSubscriptionId], references: [id])
+  platform         Platform         @relation(fields: [platformId], references: [id], onDelete: Cascade)
+}
+
+model Group {
+  id            String      @id @default(uuid())
+  name          String
+  creatorId     String
+  platformId    String
+  description   String?
+  groupImageUrl String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  status        GroupStatus @default(AVAILABLE)
+  countryName   String
+  countryFlag   String
+  publicId      String
+
+  creator     SuperAdmin    @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  members     RegularUser[] @relation("UserJoinedGroup")
+  GroupMember GroupMember[]
+  platform    Platform      @relation(fields: [platformId], references: [id], onDelete: Cascade)
+}
+
+model GroupMember {
+  id       String       @id @default(uuid())
+  groupId  String
+  userId   String
+  joinedAt DateTime     @default(now())
+  status   MemberStatus @default(ACTIVE)
+
+  group Group       @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  RegularUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id               String           @id @default(uuid())
+  userId           String
+  message          String
+  notificationType NotificationType
+  isRead           Boolean          @default(false)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  user             RegularUser      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Account {
+  id        String   @id @default(uuid())
+  platform  String
+  username  String?
+  url       String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model UserNotification {
+  id        String                   @id @default(uuid())
+  message   String?
+  imageUrl  String?
+  videoUrl  String?
+  type      UserNotificationType
+  audience  UserNotificationAudience
+  createdAt DateTime                 @default(now())
+  isDeleted Boolean                  @default(false)
+  users     UserNotificationRecord[]
+}
+
+model UserNotificationRecord {
+  id                 String            @id @default(uuid())
+  notificationId     String
+  regularUserId      String?
+  userSubscriptionId String?
+  isRead             Boolean           @default(false)
+  isDeleted          Boolean           @default(false)
+  createdAt          DateTime          @default(now())
+  notification       UserNotification  @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  regularUser        RegularUser?      @relation(fields: [regularUserId], references: [id], onDelete: Cascade)
+  userSubscription   UserSubscription? @relation(fields: [userSubscriptionId], references: [id], onDelete: Cascade)
+}
+
+model WelcomeVideo {
+  id        String   @id @default(uuid())
+  videoUrl  String
+  publicId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Policy {
+  id        String   @id @default(uuid())
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ShareReward {
+  id             String            @id @default(uuid())
+  title          String
+  description    String
+  imageUrl       String?
+  videoUrl       String?
+  logoUrl        String?
+  googleLink     String?
+  appleLink      String?
+  diamondReward  Int
+  requiredShares Int               @default(5)
+  isActive       Boolean           @default(true)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  shareRecords   UserShareRecord[]
+}
+
+model UserShareRecord {
+  id             String         @id @default(uuid())
+  userId         String
+  rewardId       String
+  platform       String
+  earnedDiamonds Int
+  createdAt      DateTime       @default(now())
+  user           RegularUser    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reward         ShareReward    @relation(fields: [rewardId], references: [id], onDelete: Cascade)
+  walletId       String?
+  wallet         DiamondWallet? @relation(fields: [walletId], references: [id], onDelete: Cascade)
+}
+
+model ChatMessage {
+  id                    String   @id @default(uuid())
+  senderRegularUserId   String?
+  senderSuperAdminId    String?
+  receiverRegularUserId String?
+  senderRole            Role
+  receiverRole          Role
+  text                  String?
+  mediaUrl              String?
+  mediaType             String?
+  createdAt             DateTime @default(now())
+  isRead                Boolean  @default(false)
+
+  senderRegularUser   RegularUser? @relation("RegularUserSentMessages", fields: [senderRegularUserId], references: [id], map: "fk_sender_regularuser")
+  senderSuperAdmin    SuperAdmin?  @relation("SuperAdminSentMessages", fields: [senderSuperAdminId], references: [id], map: "fk_sender_superadmin")
+  receiverRegularUser RegularUser? @relation("RegularUserReceivedMessages", fields: [receiverRegularUserId], references: [id], map: "fk_receiver_regularuser")
+}
+
+model TelegramSession {
+  id            String    @id @default(uuid())
+  userId        String?
+  superAdminId  String?
+  supervisorId  String?
+  salesId       String?
+  session       String
+  phoneCodeHash String?
+  codeSentAt    DateTime?
+  phoneNumber   String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  user       RegularUser? @relation(fields: [userId], references: [id], onDelete: Cascade)
+  superAdmin SuperAdmin?  @relation(fields: [superAdminId], references: [id], onDelete: Cascade)
+  supervisor Supervisor?  @relation(fields: [supervisorId], references: [id], onDelete: Cascade)
+  sales      Sales?       @relation(fields: [salesId], references: [id], onDelete: Cascade)
+
+  @@unique([userId])
+  @@unique([superAdminId])
+  @@unique([supervisorId])
+  @@unique([salesId])
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum Language {
+  AR
+  EN
+}
+
+enum TransactionType {
+  CREDIT
+  DEBIT
+}
+
+enum Role {
+  SUPER_ADMIN
+  SUPERVISOR
+  SALES
+  REGULAR_USER
+}
+
+enum ActionType {
+  SEND_MESSAGE
+  SEND_AUDIO
+  CREATE_GROUP
+  ADD_MEMBER
+  REMOVE_MEMBER
+  DELETE_MESSAGE
+  DELETE_AUDIO
+  DELETE_GROUP
+  LEAVE_GROUP
+  OTHER
+}
+
+enum MessageStatus {
+  AVAILABLE
+  DELETED
+}
+
+enum AudioStatus {
+  AVAILABLE
+  DELETED
+}
+
+enum GroupStatus {
+  AVAILABLE
+  DELETED
+}
+
+enum MemberStatus {
+  ACTIVE
+  LEFT
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  VIDEO
+  MEDIA
+}
+
+enum SubscriptionType {
+  FREE
+  MONTHLY
+  YEARLY
+  TRIAL
+}
+
+enum NotificationType {
+  NEW_MESSAGE
+  NEW_GROUP_INVITE
+  GROUP_UPDATE
+}
+
+enum UserNotificationType {
+  TEXT
+  IMAGE
+  VIDEO
+}
+
+enum UserNotificationAudience {
+  ALL
+  REGULAR_USER
+  USER_SUBSCRIPTION
+}
